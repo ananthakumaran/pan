@@ -1,10 +1,9 @@
 defmodule Pan do
   def compile(states) do
-    [state | rest] = states
+    [state | rest] = List.flatten(states)
     states = [%{state | id: :begin} | rest]
 
-    List.flatten(states)
-    |> Enum.chunk_every(2, 1, [:end])
+    Enum.chunk_every(states, 2, 1, [:end])
     |> Enum.reduce(%{}, fn
       [current, :end], acc ->
         Map.put(acc, current.id, %{current | next: :end})
@@ -39,6 +38,20 @@ defmodule Pan do
             new_bindings,
             [event | partial_match]
           )
+
+        :ignore ->
+          if partial_match == [] do
+            result
+          else
+            update_result(
+              automata,
+              result,
+              current.id,
+              bindings,
+              partial_match,
+              false
+            )
+          end
 
         :take ->
           update_result(automata, result, current.id, new_bindings, [event | partial_match])

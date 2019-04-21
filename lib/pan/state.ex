@@ -19,7 +19,9 @@ defmodule Pan.State do
     }
   end
 
-  def many(binding, start_predicate, continue_predicate) do
+  def many(binding, start_predicate, continue_predicate, options \\ []) do
+    contiguity = Keyword.get(options, :contiguity, :strict)
+
     [
       %__MODULE__{
         id: System.unique_integer(),
@@ -27,6 +29,22 @@ defmodule Pan.State do
           Map.put(bindings, binding, [event])
         end,
         edges: [
+          fn event, bindings ->
+            case contiguity do
+              :strict ->
+                :drop
+
+              :skip_till_next_match ->
+                if !start_predicate.(event, bindings) do
+                  :ignore
+                else
+                  :drop
+                end
+
+              :skip_till_any_match ->
+                :ignore
+            end
+          end,
           fn event, bindings ->
             if start_predicate.(event, bindings) do
               :begin
@@ -43,6 +61,22 @@ defmodule Pan.State do
         end,
         proceed: true,
         edges: [
+          fn event, bindings ->
+            case contiguity do
+              :strict ->
+                :drop
+
+              :skip_till_next_match ->
+                if !continue_predicate.(event, bindings) do
+                  :ignore
+                else
+                  :drop
+                end
+
+              :skip_till_any_match ->
+                :ignore
+            end
+          end,
           fn event, bindings ->
             if continue_predicate.(event, bindings) do
               :take
