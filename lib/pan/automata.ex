@@ -27,7 +27,13 @@ defmodule Pan.Automata do
 
       bindings =
         Enum.take(states, i)
-        |> Enum.map(&{&1.id, Macro.var(&1.variable, nil)})
+        |> Enum.map(fn s ->
+          if Formula.refers?(state.predicate, s.variable) do
+            {s.id, Macro.var(s.variable, nil)}
+          else
+            Macro.var(:_, nil)
+          end
+        end)
         |> Enum.reverse()
 
       Pan.NFAState.compile(name, state, bindings, next, contiguity)

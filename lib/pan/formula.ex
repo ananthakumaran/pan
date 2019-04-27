@@ -1,6 +1,13 @@
 defmodule Pan.Formula do
   defstruct [:ast, :variables]
 
+  def refers?(%__MODULE__{variables: variables}, variable) do
+    Enum.find(variables, fn
+      {var, :i, _} -> var == variable
+      var -> var == variable
+    end)
+  end
+
   def build(ast, all_variables) do
     {_, variables} =
       Macro.postwalk(ast, MapSet.new(), fn ast, variables ->

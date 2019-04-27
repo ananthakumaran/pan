@@ -1,18 +1,15 @@
 defmodule Example do
   require Integer
-  import Mex
   use Pan.Automata
 
   def scan(_x) do
     true
   end
 
-  mex do
-    automata :loop_skip_till_any_match,
-      contiguity: :skip_till_any_match,
-      pattern: [scan :: a, [scan] :: b],
-      where: Integer.is_even(a) && Integer.is_odd(first(b)) && Integer.is_odd(current(b))
-  end
+  automata :loop_skip_till_any_match,
+    contiguity: :skip_till_any_match,
+    pattern: [scan :: a, [scan] :: b],
+    where: Integer.is_even(a) && Integer.is_odd(first(b)) && Integer.is_odd(current(b))
 
   automata :loop_skip_till_next_match,
     contiguity: :skip_till_next_match,
