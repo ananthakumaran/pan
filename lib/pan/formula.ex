@@ -3,12 +3,36 @@ defmodule Pan.Formula do
 
   def build(ast, all_variables) do
     {_, variables} =
-      Macro.prewalk(ast, MapSet.new(), fn ast, variables ->
+      Macro.postwalk(ast, MapSet.new(), fn ast, variables ->
         variables =
           case ast do
             {var, _, nil} ->
               if Enum.member?(all_variables, var) do
                 MapSet.put(variables, var)
+              else
+                variables
+              end
+
+            {:first, _, [{var, _, nil}]} ->
+              if Enum.member?(all_variables, var) do
+                MapSet.delete(variables, var)
+                |> MapSet.put({var, :i, 0})
+              else
+                variables
+              end
+
+            {:previous, _, [{var, _, nil}]} ->
+              if Enum.member?(all_variables, var) do
+                MapSet.delete(variables, var)
+                |> MapSet.put({var, :i, -1})
+              else
+                variables
+              end
+
+            {:current, _, [{var, _, nil}]} ->
+              if Enum.member?(all_variables, var) do
+                MapSet.delete(variables, var)
+                |> MapSet.put({var, :i, :i})
               else
                 variables
               end

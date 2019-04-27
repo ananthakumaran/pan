@@ -5,7 +5,8 @@ defmodule Pan.Automata do
   defmacro __using__(_) do
     quote do
       import Pan.Automata, only: [automata: 2]
-      Module.register_attribute(__MODULE__, :pan_automata_definition, accumulate: true)
+      require Pan.Automata.Kernel
+      import Pan.Automata.Kernel
     end
   end
 
@@ -33,45 +34,10 @@ defmodule Pan.Automata do
         |> Enum.map(&{&1.id, Macro.var(&1.variable, nil)})
         |> Enum.reverse()
 
-      quote do
-        def unquote(name)(
-              __event,
-              unquote(state.id),
-              __bindings = unquote(bindings),
-              __partial_match
-            ) do
-          unquote(Macro.var(state.variable, nil)) = __event
-          __new_bindings = [{unquote(state.variable), __event} | __bindings]
-
-          if unquote(state.predicate.ast) do
-            unquote(
-              if last? do
-                quote do
-                  %{matches: [Enum.reverse([__event | __partial_match])], branches: []}
-                end
-              else
-                quote do
-                  %{
-                    matches: [],
-                    branches: [
-                      %{
-                        next: unquote(next.id),
-                        bindings: __new_bindings,
-                        partial_match: [__event | __partial_match]
-                      }
-                    ]
-                  }
-                end
-              end
-            )
-          else
-            %{matches: [], branches: []}
-          end
-        end
-      end
+      Pan.NFAState.compile(name, state, bindings, next)
     end) ++
       [
-        quote do
+        quote location: :keep do
           def unquote(name)() do
             %Pan.Automata.State{}
           end
@@ -111,7 +77,7 @@ defmodule Pan.Automata do
   defp parse_pattern(kw) do
     pattern = Keyword.fetch!(kw, :pattern)
 
-    Enum.map(pattern, &Pan.NFAState.build/1)
+    Enum.flat_map(pattern, &Pan.NFAState.build/1)
     |> Enum.with_index()
     |> Enum.map(fn {state, i} ->
       %{state | position: i}
@@ -131,7 +97,14 @@ defmodule Pan.Automata do
       Enum.map(formulas, fn formula ->
         position =
           Enum.map(formula.variables, fn variable ->
-            state = Enum.find(states, &(&1.variable == variable))
+            finder =
+              case variable do
+                {v, :i, 0} -> fn s -> s.type == :kleene_start && s.variable == v end
+                {v, :i, _} -> fn s -> s.type == :kleene_plus && s.variable == v end
+                _ -> fn s -> s.variable == variable end
+              end
+
+            state = Enum.find(states, finder)
             state.position
           end)
           |> Enum.max(fn -> 0 end)
