@@ -14,7 +14,7 @@ defmodule Pan.NFAState do
     end
   end
 
-  def compile(name, %__MODULE__{type: :single} = state, bindings, next) do
+  def compile(name, %__MODULE__{type: :single} = state, bindings, next, contiguity) do
     quote location: :keep do
       def unquote(name)(
             event__,
@@ -24,36 +24,69 @@ defmodule Pan.NFAState do
           ) do
         unquote(Macro.var(state.variable, nil)) = event__
         new_bindings__ = [{unquote(state.variable), event__} | bindings__]
+        result__ = %{matches: [], branches: []}
+        predicate_true__ = unquote(state.predicate.ast)
 
-        if unquote(state.predicate.ast) do
+        result__ =
+          if predicate_true__ do
+            unquote(
+              update_result(
+                next,
+                quote(do: result__),
+                quote(do: new_bindings__),
+                quote(do: [event__ | partial_match__])
+              )
+            )
+          else
+            result__
+          end
+
+        result__ =
           unquote(
-            if !next do
-              quote do
-                %{matches: [Enum.reverse([event__ | partial_match__])], branches: []}
-              end
-            else
-              quote do
-                %{
-                  matches: [],
-                  branches: [
-                    %{
-                      next: unquote(next.id),
-                      bindings: new_bindings__,
-                      partial_match: [event__ | partial_match__]
-                    }
-                  ]
-                }
-              end
+            case contiguity do
+              :strict ->
+                quote(do: result__)
+
+              :skip_till_next_match ->
+                if state.position == 0 do
+                  quote(do: result__)
+                else
+                  quote do
+                    if !predicate_true__ do
+                      unquote(
+                        update_result(
+                          [state | next],
+                          quote(do: result__),
+                          quote(do: bindings__),
+                          quote(do: partial_match__),
+                          false
+                        )
+                      )
+                    else
+                      result__
+                    end
+                  end
+                end
+
+              :skip_till_any_match ->
+                if state.position == 0 do
+                  quote(do: result__)
+                else
+                  update_result(
+                    [state | next],
+                    quote(do: result__),
+                    quote(do: bindings__),
+                    quote(do: partial_match__),
+                    false
+                  )
+                end
             end
           )
-        else
-          %{matches: [], branches: []}
-        end
       end
     end
   end
 
-  def compile(name, %__MODULE__{type: :kleene_start} = state, bindings, next) do
+  def compile(name, %__MODULE__{type: :kleene_start} = state, bindings, next, contiguity) do
     quote location: :keep do
       def unquote(name)(
             event__,
@@ -67,35 +100,69 @@ defmodule Pan.NFAState do
           {unquote(state.variable), unquote(Macro.var(state.variable, nil))} | bindings__
         ]
 
-        if unquote(state.predicate.ast) do
+        result__ = %{matches: [], branches: []}
+        predicate_true__ = unquote(state.predicate.ast)
+
+        result__ =
+          if predicate_true__ do
+            unquote(
+              update_result(
+                next,
+                quote(do: result__),
+                quote(do: new_bindings__),
+                quote(do: [event__ | partial_match__])
+              )
+            )
+          else
+            result__
+          end
+
+        result__ =
           unquote(
-            if !next do
-              quote do
-                %{matches: [Enum.reverse([event__ | partial_match__])], branches: []}
-              end
-            else
-              quote do
-                %{
-                  matches: [],
-                  branches: [
-                    %{
-                      next: unquote(next.id),
-                      bindings: new_bindings__,
-                      partial_match: [event__ | partial_match__]
-                    }
-                  ]
-                }
-              end
+            case contiguity do
+              :strict ->
+                quote(do: result__)
+
+              :skip_till_next_match ->
+                if state.position == 0 do
+                  quote(do: result__)
+                else
+                  quote do
+                    if !predicate_true__ do
+                      unquote(
+                        update_result(
+                          [state | next],
+                          quote(do: result__),
+                          quote(do: bindings__),
+                          quote(do: partial_match__),
+                          false
+                        )
+                      )
+                    else
+                      result__
+                    end
+                  end
+                end
+
+              :skip_till_any_match ->
+                if state.position == 0 do
+                  quote(do: result__)
+                else
+                  update_result(
+                    [state | next],
+                    quote(do: result__),
+                    quote(do: bindings__),
+                    quote(do: partial_match__),
+                    false
+                  )
+                end
             end
           )
-        else
-          %{matches: [], branches: []}
-        end
       end
     end
   end
 
-  def compile(name, %__MODULE__{type: :kleene_plus} = state, bindings, next) do
+  def compile(name, %__MODULE__{type: :kleene_plus} = state, bindings, next, contiguity) do
     quote location: :keep do
       def unquote(name)(
             event__,
@@ -107,37 +174,99 @@ defmodule Pan.NFAState do
           event__ | unquote(Macro.var(state.variable, nil))
         ]
 
-        var!(i__) = length(unquote(Macro.var(state.variable, nil))) - 1
-
         new_bindings__ = [
           {unquote(state.variable), unquote(Macro.var(state.variable, nil))} | tl(bindings__)
         ]
 
-        if unquote(state.predicate.ast) do
+        result__ = %{matches: [], branches: []}
+        predicate_true__ = unquote(state.predicate.ast)
+
+        result__ =
+          if predicate_true__ do
+            unquote(
+              update_result(
+                [state | next],
+                quote(do: result__),
+                quote(do: new_bindings__),
+                quote(do: [event__ | partial_match__])
+              )
+            )
+          else
+            result__
+          end
+
+        result__ =
           unquote(
-            if !next do
-              quote do
-                %{matches: [Enum.reverse([event__ | partial_match__])], branches: []}
-              end
-            else
-              quote do
-                %{
-                  matches: [],
-                  branches: [
-                    %{
-                      next: unquote(next.id),
-                      bindings: new_bindings__,
-                      partial_match: [event__ | partial_match__]
-                    }
-                  ]
-                }
-              end
+            case contiguity do
+              :strict ->
+                quote(do: result__)
+
+              :skip_till_next_match ->
+                quote do
+                  if !predicate_true__ do
+                    unquote(
+                      update_result(
+                        [state | next],
+                        quote(do: result__),
+                        quote(do: bindings__),
+                        quote(do: partial_match__),
+                        false
+                      )
+                    )
+                  else
+                    result__
+                  end
+                end
+
+              :skip_till_any_match ->
+                update_result(
+                  [state | next],
+                  quote(do: result__),
+                  quote(do: bindings__),
+                  quote(do: partial_match__),
+                  false
+                )
             end
           )
-        else
-          %{matches: [], branches: []}
-        end
       end
+    end
+  end
+
+  def update_result(rest, result, bindings, partial_match, follow_proceed \\ true)
+
+  def update_result([], result, _bindings, partial_match, _) do
+    quote do
+      %{
+        unquote(result)
+        | matches: [Enum.reverse(unquote(partial_match)) | unquote(result).matches]
+      }
+    end
+  end
+
+  def update_result([next | _], result, bindings, partial_match, false) do
+    quote do
+      %{
+        unquote(result)
+        | branches: [
+            %{
+              next: unquote(next.id),
+              bindings: unquote(bindings),
+              partial_match: unquote(partial_match)
+            }
+            | unquote(result).branches
+          ]
+      }
+    end
+  end
+
+  def update_result(states = [next | rest], result, bindings, partial_match, true) do
+    if next.type == :kleene_plus do
+      quote do
+        result__ = unquote(update_result(rest, result, bindings, partial_match, true))
+        unquote(update_result(states, quote(do: result__), bindings, partial_match, false))
+      end
+    else
+      update_result(states, result, bindings, partial_match, false)
     end
   end
 end

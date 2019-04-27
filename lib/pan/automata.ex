@@ -20,21 +20,17 @@ defmodule Pan.Automata do
 
   defmacro automata(name, kw) do
     states = parse(kw)
+    contiguity = Keyword.get(kw, :contiguity, :strict)
 
     Enum.map(Enum.with_index(states), fn {state, i} ->
-      last? = length(states) == i + 1
-
-      next =
-        unless last? do
-          Enum.at(states, i + 1)
-        end
+      next = Enum.drop(states, i + 1)
 
       bindings =
         Enum.take(states, i)
         |> Enum.map(&{&1.id, Macro.var(&1.variable, nil)})
         |> Enum.reverse()
 
-      Pan.NFAState.compile(name, state, bindings, next)
+      Pan.NFAState.compile(name, state, bindings, next, contiguity)
     end) ++
       [
         quote location: :keep do

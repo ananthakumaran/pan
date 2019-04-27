@@ -1,25 +1,25 @@
 defmodule Pan.Automata.Kernel do
   defmacro first(x) do
     quote bind_quoted: [x: x] do
-      List.first(x)
+      List.last(x)
     end
   end
 
   defmacro last(x) do
     quote bind_quoted: [x: x] do
-      List.last(x)
+      List.first(x)
     end
   end
 
   defmacro previous(x) do
     quote bind_quoted: [x: x] do
-      Enum.at(x, var!(i__) - 1)
+      hd(tl(x))
     end
   end
 
   defmacro current(x) do
     quote bind_quoted: [x: x] do
-      Enum.at(x, var!(i__))
+      hd(x)
     end
   end
 end
