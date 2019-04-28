@@ -2,7 +2,7 @@ defmodule Pan.ConjuctiveNormalForm do
   # https://www.cs.jhu.edu/~jason/tutorials/convert-to-CNF.html
 
   # and
-  def convert({:&&, meta, [left, right]}) do
+  def convert({:&&, _, [left, right]}) do
     convert(left) ++ convert(right)
   end
 
