@@ -30,10 +30,10 @@ defmodule PanTest do
 
   test "logistics" do
     events = [
-      %{event: "alert", type: "contaminated", site: "A"},
-      %{event: "shipment", from: "A", to: "B"},
-      %{event: "shipment", from: "B", to: "C"},
-      %{event: "shipment", from: "C", to: "D"}
+      %{org: "a", event: "alert", type: "contaminated", site: "A"},
+      %{org: "a", event: "shipment", from: "A", to: "B"},
+      %{org: "a", event: "shipment", from: "B", to: "C"},
+      %{org: "a", event: "shipment", from: "C", to: "D"}
     ]
 
     %{matches: matches} =
@@ -43,19 +43,19 @@ defmodule PanTest do
 
     assert matches == [
              [
-               %{event: "alert", site: "A", type: "contaminated"},
-               %{event: "shipment", from: "A", to: "B"},
-               %{event: "shipment", from: "B", to: "C"},
-               %{event: "shipment", from: "C", to: "D"}
+               %{org: "a", event: "alert", site: "A", type: "contaminated"},
+               %{org: "a", event: "shipment", from: "A", to: "B"},
+               %{org: "a", event: "shipment", from: "B", to: "C"},
+               %{org: "a", event: "shipment", from: "C", to: "D"}
              ],
              [
-               %{event: "alert", site: "A", type: "contaminated"},
-               %{event: "shipment", from: "A", to: "B"},
-               %{event: "shipment", from: "B", to: "C"}
+               %{org: "a", event: "alert", site: "A", type: "contaminated"},
+               %{org: "a", event: "shipment", from: "A", to: "B"},
+               %{org: "a", event: "shipment", from: "B", to: "C"}
              ],
              [
-               %{event: "alert", site: "A", type: "contaminated"},
-               %{event: "shipment", from: "A", to: "B"}
+               %{org: "a", event: "alert", site: "A", type: "contaminated"},
+               %{org: "a", event: "shipment", from: "A", to: "B"}
              ]
            ]
   end

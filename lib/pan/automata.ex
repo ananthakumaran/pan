@@ -1,5 +1,6 @@
 defmodule Pan.Automata do
   alias Pan.Formula
+  alias Pan.Run
 
   @doc false
   defmacro __using__(_) do
@@ -10,17 +11,15 @@ defmodule Pan.Automata do
     end
   end
 
-  defmodule Run do
-    defstruct [:next, partial_match: [], bindings: []]
-  end
-
   defmodule State do
-    defstruct runs: [], matches: []
+    defstruct [:runs, :run_expiration, matches: []]
   end
 
   defmacro automata(name, kw) do
     states = parse(kw)
     contiguity = Keyword.get(kw, :contiguity, :strict)
+    partition_by = Keyword.get(kw, :partition_by)
+    within = Keyword.get(kw, :within, 0)
 
     Enum.map(Enum.with_index(states), fn {state, i} ->
       next = Enum.drop(states, i + 1)
@@ -41,29 +40,126 @@ defmodule Pan.Automata do
       [
         quote location: :keep do
           def unquote(name)() do
-            %Pan.Automata.State{}
+            %Pan.Automata.State{runs: %{}, run_expiration: :queue.new()}
           end
         end,
-        quote do
-          def unquote(name)(event, state) do
-            Enum.reduce(
-              [%Run{next: unquote(hd(states).id)}] ++ state.runs,
-              %{state | runs: []},
-              fn run, state ->
-                %{matches: matches, branches: branches} =
-                  unquote(name)(event, run.next, run.bindings, run.partial_match)
+        quote location: :keep do
+          def unquote(name)(event, state, time \\ 0) do
+            begin_run_id = System.unique_integer()
 
-                next_runs =
-                  Enum.map(branches, fn branch ->
-                    %{
-                      run
-                      | next: branch.next,
-                        bindings: branch.bindings,
-                        partial_match: branch.partial_match
-                    }
+            begin_run = %Run{
+              id: begin_run_id,
+              next: unquote(hd(states).id),
+              start_time: time
+            }
+
+            unquote(
+              if within > 0 do
+                quote do
+                  {runs, run_expiration} =
+                    Run.prune_old_runs(state.runs, state.run_expiration, time - unquote(within))
+
+                  state = %{state | runs: runs}
+                end
+              end
+            )
+
+            unquote(
+              if partition_by do
+                quote do
+                  partition_key = get_in(event, unquote(partition_by))
+                  runs = Map.get(state.runs, partition_key, %{})
+                  state = %{state | runs: Map.delete(state.runs, partition_key)}
+                end
+              else
+                quote do
+                  runs = state.runs
+                  state = %{state | runs: %{}}
+                end
+              end
+            )
+
+            runs = Map.put(runs, begin_run.id, [begin_run])
+
+            state =
+              Enum.reduce(
+                runs,
+                state,
+                fn {run_id, runs}, state ->
+                  Enum.reduce(runs, state, fn run, state ->
+                    %{matches: matches, branches: branches} =
+                      unquote(name)(event, run.next, run.bindings, run.partial_match)
+
+                    if branches == [] do
+                      %{state | matches: matches ++ state.matches}
+                    else
+                      next_runs =
+                        Enum.map(branches, fn branch ->
+                          %{
+                            run
+                            | next: branch.next,
+                              bindings: branch.bindings,
+                              partial_match: branch.partial_match
+                          }
+                        end)
+
+                      runs =
+                        unquote(
+                          if partition_by do
+                            quote do
+                              if Map.has_key?(state.runs, partition_key) do
+                                update_in(
+                                  state.runs,
+                                  [partition_key, run_id],
+                                  &(next_runs ++ (&1 || []))
+                                )
+                              else
+                                Map.put(state.runs, partition_key, %{run_id => next_runs})
+                              end
+                            end
+                          else
+                            quote do
+                              Map.update(state.runs, run_id, next_runs, &(next_runs ++ &1))
+                            end
+                          end
+                        )
+
+                      %{state | runs: runs, matches: matches ++ state.matches}
+                    end
                   end)
+                end
+              )
 
-                %{state | runs: next_runs ++ state.runs, matches: matches ++ state.matches}
+            unquote(
+              if within > 0 do
+                if partition_by do
+                  quote do
+                    if get_in(state.runs, [partition_key, begin_run_id]) do
+                      state = %{
+                        state
+                        | run_expiration:
+                            :queue.in({time, partition_key, begin_run_id}, run_expiration)
+                      }
+                    else
+                      %{state | run_expiration: run_expiration}
+                    end
+                  end
+                else
+                  quote do
+                    if Map.has_key?(state.runs, begin_run_id) do
+                      state = %{
+                        state
+                        | run_expiration: :queue.in({time, begin_run_id}, run_expiration)
+                      }
+                    else
+                      %{state | run_expiration: run_expiration}
+                    end
+                  end
+                end
+              else
+                quote do
+                  state
+                end
               end
             )
           end
