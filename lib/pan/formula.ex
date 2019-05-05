@@ -3,7 +3,7 @@ defmodule Pan.Formula do
 
   def refers?(%__MODULE__{variables: variables}, variable) do
     Enum.find(variables, fn
-      {var, :i, _} -> var == variable
+      {var, _} -> var == variable
       var -> var == variable
     end)
   end
@@ -23,7 +23,7 @@ defmodule Pan.Formula do
             {:first, _, [{var, _, nil}]} ->
               if Enum.member?(all_variables, var) do
                 MapSet.delete(variables, var)
-                |> MapSet.put({var, :i, 0})
+                |> MapSet.put({var, :start})
               else
                 variables
               end
@@ -31,7 +31,7 @@ defmodule Pan.Formula do
             {:previous, _, [{var, _, nil}]} ->
               if Enum.member?(all_variables, var) do
                 MapSet.delete(variables, var)
-                |> MapSet.put({var, :i, -1})
+                |> MapSet.put({var, :plus})
               else
                 variables
               end
@@ -39,7 +39,7 @@ defmodule Pan.Formula do
             {:current, _, [{var, _, nil}]} ->
               if Enum.member?(all_variables, var) do
                 MapSet.delete(variables, var)
-                |> MapSet.put({var, :i, :i})
+                |> MapSet.put({var, :all})
               else
                 variables
               end
@@ -53,6 +53,8 @@ defmodule Pan.Formula do
 
     %Pan.Formula{ast: ast, variables: variables}
   end
+
+  def merge([]), do: constant(true)
 
   def merge([formula]), do: formula
 
@@ -74,28 +76,40 @@ defmodule Pan.Formula do
   end
 
   def group_by_state(formulas, states) do
-    formulas_by_position =
+    formula_by_positions =
       Enum.map(formulas, fn formula ->
-        position =
+        positions =
           Enum.map(formula.variables, fn variable ->
             finder =
               case variable do
-                {v, :i, 0} -> fn s -> s.type == :kleene_start && s.variable == v end
-                {v, :i, _} -> fn s -> s.type == :kleene_plus && s.variable == v end
-                _ -> fn s -> s.variable == variable end
+                {v, :start} ->
+                  fn s -> s.type == :kleene_start && s.variable == v end
+
+                {v, :plus} ->
+                  fn s -> s.type == :kleene_plus && s.variable == v end
+
+                {v, :all} ->
+                  fn s -> s.type in [:kleene_start, :kleene_plus] && s.variable == v end
+
+                _ ->
+                  fn s -> s.type == :single && s.variable == variable end
               end
 
-            state = Enum.find(states, finder)
-            state.position
+            Enum.filter(states, finder)
+            |> Enum.map(& &1.position)
           end)
-          |> Enum.max(fn -> 0 end)
 
-        {position, formula}
+        {formula, positions}
       end)
-      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
 
     Enum.map(states, fn state ->
-      formulas = formulas_by_position[state.position]
+      formulas =
+        Enum.filter(formula_by_positions, fn {_formula, positions} ->
+          Enum.any?(positions, fn p -> Enum.member?(p, state.position) end) &&
+            Enum.all?(positions, fn p -> Enum.min(p, fn -> 0 end) <= state.position end)
+        end)
+        |> Enum.map(fn {formula, _} -> formula end)
+
       {state, formulas}
     end)
   end

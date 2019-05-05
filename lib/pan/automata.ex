@@ -193,13 +193,7 @@ defmodule Pan.Automata do
 
     Formula.group_by_state(formulas, states)
     |> Enum.map(fn {state, formulas} ->
-      predicate =
-        if formulas do
-          Formula.merge(formulas)
-        else
-          Formula.constant(true)
-        end
-
+      predicate = Formula.merge(formulas)
       %{state | predicate: predicate}
     end)
   end
