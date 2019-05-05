@@ -72,4 +72,31 @@ defmodule Pan.Formula do
       ast: Macro.escape(value)
     }
   end
+
+  def group_by_state(formulas, states) do
+    formulas_by_position =
+      Enum.map(formulas, fn formula ->
+        position =
+          Enum.map(formula.variables, fn variable ->
+            finder =
+              case variable do
+                {v, :i, 0} -> fn s -> s.type == :kleene_start && s.variable == v end
+                {v, :i, _} -> fn s -> s.type == :kleene_plus && s.variable == v end
+                _ -> fn s -> s.variable == variable end
+              end
+
+            state = Enum.find(states, finder)
+            state.position
+          end)
+          |> Enum.max(fn -> 0 end)
+
+        {position, formula}
+      end)
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+
+    Enum.map(states, fn state ->
+      formulas = formulas_by_position[state.position]
+      {state, formulas}
+    end)
+  end
 end

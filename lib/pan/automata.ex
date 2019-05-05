@@ -191,40 +191,16 @@ defmodule Pan.Automata do
       Pan.ConjuctiveNormalForm.convert(where)
       |> Enum.map(&Formula.build(&1, variables))
 
-    formulas_by_position =
-      Enum.map(formulas, fn formula ->
-        position =
-          Enum.map(formula.variables, fn variable ->
-            finder =
-              case variable do
-                {v, :i, 0} -> fn s -> s.type == :kleene_start && s.variable == v end
-                {v, :i, _} -> fn s -> s.type == :kleene_plus && s.variable == v end
-                _ -> fn s -> s.variable == variable end
-              end
+    Formula.group_by_state(formulas, states)
+    |> Enum.map(fn {state, formulas} ->
+      predicate =
+        if formulas do
+          Formula.merge(formulas)
+        else
+          Formula.constant(true)
+        end
 
-            state = Enum.find(states, finder)
-            state.position
-          end)
-          |> Enum.max(fn -> 0 end)
-
-        {position, formula}
-      end)
-      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-
-    states =
-      Enum.map(states, fn state ->
-        formulas = formulas_by_position[state.position]
-
-        predicate =
-          if formulas do
-            Formula.merge(formulas)
-          else
-            Formula.constant(true)
-          end
-
-        %{state | predicate: predicate}
-      end)
-
-    states
+      %{state | predicate: predicate}
+    end)
   end
 end
