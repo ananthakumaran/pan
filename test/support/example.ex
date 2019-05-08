@@ -7,11 +7,18 @@ defmodule Example do
     true
   end
 
+  automata :loop_skip_till_any_match,
+    contiguity: :skip_till_any_match,
+    pattern: [scan :: a, [scan] :: b],
+    where: Integer.is_even(a) && Integer.is_odd(current(b)) && current(b) > previous(b)
+
   mex do
-    automata :loop_skip_till_any_match,
+    automata :loop_length,
       contiguity: :skip_till_any_match,
       pattern: [scan :: a, [scan] :: b],
-      where: Integer.is_even(a) && Integer.is_odd(current(b)) && current(b) > previous(b)
+      where:
+        Integer.is_even(a) && Integer.is_odd(current(b)) && current(b) > previous(b) &&
+          length(b) >= 2
   end
 
   automata :loop_skip_till_next_match,

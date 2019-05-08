@@ -6,6 +6,7 @@ defmodule Pan.Automata do
   defmacro __using__(_) do
     quote do
       import Pan.Automata, only: [automata: 2]
+      import Kernel, except: [length: 1]
       require Pan.Automata.Kernel
       import Pan.Automata.Kernel
     end
@@ -198,8 +199,8 @@ defmodule Pan.Automata do
 
     Formula.group_by_state(formulas, states)
     |> Enum.map(fn {state, formulas} ->
-      predicate = Formula.merge(formulas)
-      %{state | predicate: predicate}
+      {post, pre} = Enum.split_with(formulas, &Formula.post?/1)
+      %{state | predicate: Formula.merge(pre), post_predicate: Formula.merge(post)}
     end)
   end
 end

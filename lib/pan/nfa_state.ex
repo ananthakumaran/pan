@@ -1,5 +1,13 @@
 defmodule Pan.NFAState do
-  defstruct [:position, :id, :name, :variable, :type, :predicate]
+  defstruct [
+    :position,
+    :id,
+    :name,
+    :variable,
+    :type,
+    :predicate,
+    :post_predicate
+  ]
 
   def build({:::, _, [type, {variable, _, _}]}) do
     case type do
@@ -27,6 +35,7 @@ defmodule Pan.NFAState do
         result__ = %{matches: [], branches: []}
         predicate_true__ = unquote(state.predicate.ast)
 
+        # begin
         result__ =
           if predicate_true__ do
             unquote(
@@ -51,6 +60,7 @@ defmodule Pan.NFAState do
                 if state.position == 0 do
                   quote(do: result__)
                 else
+                  # ignore
                   quote do
                     if !predicate_true__ do
                       unquote(
@@ -72,6 +82,7 @@ defmodule Pan.NFAState do
                 if state.position == 0 do
                   quote(do: result__)
                 else
+                  # ignore
                   update_result(
                     [state | next],
                     quote(do: result__),
@@ -103,6 +114,7 @@ defmodule Pan.NFAState do
         result__ = %{matches: [], branches: []}
         predicate_true__ = unquote(state.predicate.ast)
 
+        # begin
         result__ =
           if predicate_true__ do
             unquote(
@@ -128,6 +140,7 @@ defmodule Pan.NFAState do
                   quote(do: result__)
                 else
                   quote do
+                    # ignore
                     if !predicate_true__ do
                       unquote(
                         update_result(
@@ -148,6 +161,7 @@ defmodule Pan.NFAState do
                 if state.position == 0 do
                   quote(do: result__)
                 else
+                  # ignore
                   update_result(
                     [state | next],
                     quote(do: result__),
@@ -181,6 +195,7 @@ defmodule Pan.NFAState do
         result__ = %{matches: [], branches: []}
         predicate_true__ = unquote(state.predicate.ast)
 
+        # take
         result__ =
           if predicate_true__ do
             unquote(
@@ -262,7 +277,15 @@ defmodule Pan.NFAState do
   def update_result(states = [next | rest], result, bindings, partial_match, true) do
     if next.type == :kleene_plus do
       quote do
-        result__ = unquote(update_result(rest, result, bindings, partial_match, true))
+        post_predicate_true__ = unquote(next.post_predicate.ast)
+        # proceed
+        result__ =
+          if post_predicate_true__ do
+            unquote(update_result(rest, result, bindings, partial_match, true))
+          else
+            result__
+          end
+
         unquote(update_result(states, quote(do: result__), bindings, partial_match, false))
       end
     else

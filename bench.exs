@@ -7,13 +7,10 @@ defmodule Trip do
   mex do
     automata :long,
       contiguity: :skip_till_next_match,
-      pattern: [trip :: a, trip :: b, trip :: c],
+      pattern: [[trip] :: t],
       partition_by: [:medallion],
       within: 86400,
-      where:
-        a.medallion == b.medallion && b.medallion == c.medallion &&
-          a.trip_time_in_secs > 60 * 60 * 1 && b.trip_time_in_secs > 60 * 60 * 1 &&
-          c.trip_time_in_secs > 60 * 60 * 1
+      where: current(t).trip_time_in_secs > 60 * 60 * 1 && length(t) > 2
   end
 end
 

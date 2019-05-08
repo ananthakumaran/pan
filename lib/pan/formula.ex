@@ -44,6 +44,14 @@ defmodule Pan.Formula do
                 variables
               end
 
+            {:length, _, [{var, _, nil}]} ->
+              if Enum.member?(all_variables, var) do
+                MapSet.delete(variables, var)
+                |> MapSet.put({var, :post_plus})
+              else
+                variables
+              end
+
             _ ->
               variables
           end
@@ -75,6 +83,10 @@ defmodule Pan.Formula do
     }
   end
 
+  def post?(formula) do
+    Enum.any?(formula.variables, &match?({_, :post_plus}, &1))
+  end
+
   def group_by_state(formulas, states) do
     formula_by_positions =
       Enum.map(formulas, fn formula ->
@@ -86,6 +98,9 @@ defmodule Pan.Formula do
                   fn s -> s.type == :kleene_start && s.variable == v end
 
                 {v, :plus} ->
+                  fn s -> s.type == :kleene_plus && s.variable == v end
+
+                {v, :post_plus} ->
                   fn s -> s.type == :kleene_plus && s.variable == v end
 
                 {v, :all} ->

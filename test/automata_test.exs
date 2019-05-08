@@ -26,6 +26,14 @@ defmodule PanTest do
              [2, 5],
              [4, 5]
            ]
+
+    assert sequence(:loop_length, 0..5) == [
+             [0, 1, 3],
+             [0, 1, 3, 5],
+             [0, 1, 5],
+             [0, 3, 5],
+             [2, 3, 5]
+           ]
   end
 
   test "logistics" do

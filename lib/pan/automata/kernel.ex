@@ -22,4 +22,10 @@ defmodule Pan.Automata.Kernel do
       hd(x)
     end
   end
+
+  defmacro length(x) do
+    quote bind_quoted: [x: x] do
+      Kernel.length(x)
+    end
+  end
 end
