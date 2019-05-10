@@ -11,15 +11,31 @@ defmodule Pan.NFAState do
 
   def build({:::, _, [type, {variable, _, _}]}) do
     case type do
-      [{name, _, _}] ->
+      [{:__aliases__, _, [name]}] ->
         [
           %__MODULE__{id: variable, name: name, variable: variable, type: :kleene_start},
           %__MODULE__{id: variable, name: name, variable: variable, type: :kleene_plus}
         ]
 
-      {name, _, _} ->
+      {:__aliases__, _, [name]} ->
         [%__MODULE__{id: variable, name: name, variable: variable, type: :single}]
     end
+  end
+
+  def is_event(%__MODULE__{name: name}) do
+    name =
+      Atom.to_string(name)
+      |> String.downcase()
+
+    predicate_name = String.to_atom("is_" <> name)
+
+    %Pan.Formula{
+      variables: MapSet.new(),
+      ast:
+        quote do
+          unquote(predicate_name)(event__)
+        end
+    }
   end
 
   def compile(name, %__MODULE__{type: :single} = state, bindings, next, contiguity) do

@@ -1,6 +1,7 @@
 defmodule Pan.Automata do
   alias Pan.Formula
   alias Pan.Run
+  alias Pan.NFAState
 
   @doc false
   defmacro __using__(_) do
@@ -34,7 +35,7 @@ defmodule Pan.Automata do
         end)
         |> Enum.reverse()
 
-      Pan.NFAState.compile(name, state, bindings, next, contiguity)
+      NFAState.compile(name, state, bindings, next, contiguity)
     end) ++
       [
         quote location: :keep do
@@ -181,7 +182,7 @@ defmodule Pan.Automata do
   defp parse_pattern(kw) do
     pattern = Keyword.fetch!(kw, :pattern)
 
-    Enum.flat_map(pattern, &Pan.NFAState.build/1)
+    Enum.flat_map(pattern, &NFAState.build/1)
     |> Enum.with_index()
     |> Enum.map(fn {state, i} ->
       %{state | position: i}
@@ -200,7 +201,12 @@ defmodule Pan.Automata do
     Formula.group_by_state(formulas, states)
     |> Enum.map(fn {state, formulas} ->
       {post, pre} = Enum.split_with(formulas, &Formula.post?/1)
-      %{state | predicate: Formula.merge(pre), post_predicate: Formula.merge(post)}
+
+      %{
+        state
+        | predicate: Formula.merge([NFAState.is_event(state) | pre]),
+          post_predicate: Formula.merge(post)
+      }
     end)
   end
 end

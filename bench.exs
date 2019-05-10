@@ -4,10 +4,14 @@ defmodule Trip do
   use Pan.Automata
   import Mex
 
+  def is_trip(_) do
+    true
+  end
+
   mex do
     automata :long,
       contiguity: :skip_till_next_match,
-      pattern: [[trip] :: t],
+      pattern: [[Trip] :: t],
       partition_by: [:medallion],
       within: 86400,
       where: current(t).trip_time_in_secs > 60 * 60 * 1 && length(t) > 2

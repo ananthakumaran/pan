@@ -3,19 +3,15 @@ defmodule Example do
   require Integer
   use Pan.Automata
 
-  def scan(_x) do
-    true
-  end
-
   automata :loop_skip_till_any_match,
     contiguity: :skip_till_any_match,
-    pattern: [scan :: a, [scan] :: b],
+    pattern: [Integer :: a, [Integer] :: b],
     where: Integer.is_even(a) && Integer.is_odd(current(b)) && current(b) > previous(b)
 
   mex do
     automata :loop_length,
       contiguity: :skip_till_any_match,
-      pattern: [scan :: a, [scan] :: b],
+      pattern: [Integer :: a, [Integer] :: b],
       where:
         Integer.is_even(a) && Integer.is_odd(current(b)) && current(b) > previous(b) &&
           length(b) >= 2
@@ -23,25 +19,36 @@ defmodule Example do
 
   automata :loop_skip_till_next_match,
     contiguity: :skip_till_next_match,
-    pattern: [scan :: a, [scan] :: b],
+    pattern: [Integer :: a, [Integer] :: b],
     where: Integer.is_even(a) && Integer.is_odd(current(b))
 
   automata :loop_strict,
     contiguity: :strict,
-    pattern: [scan :: a, [scan] :: b],
+    pattern: [Integer :: a, [Integer] :: b],
     where: Integer.is_even(a) && Integer.is_odd(current(b))
 
+  def is_alert(alert) do
+    alert.event == "alert"
+  end
+
+  def is_shipment(shipment) do
+    shipment.event == "shipment"
+  end
+
   automata :logistics,
-    pattern: [alert :: a, [shipment] :: s],
+    pattern: [Alert :: a, [Shipment] :: s],
     contiguity: :skip_till_any_match,
     partition_by: [:org],
     where:
-      a.event == "alert" && a.type == "contaminated" && first(s).event == "shipment" &&
-        first(s).from == a.site && current(s).from == previous(s).to
+      a.type == "contaminated" && first(s).from == a.site && current(s).from == previous(s).to
+
+  def is_trip(_) do
+    true
+  end
 
   automata :long,
     contiguity: :skip_till_next_match,
-    pattern: [trip :: a, trip :: b, trip :: c],
+    pattern: [Trip :: a, Trip :: b, Trip :: c],
     partition_by: [:medallion],
     where:
       a.medallion == b.medallion && b.medallion == c.medallion &&
