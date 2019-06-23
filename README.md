@@ -1,9 +1,8 @@
 # Pan
 
-This a an experiment at implementing Complex Event Processing system
+This is an experiment at implementing Complex Event Processing system
 via Macros. The implementation is loosely based on the paper
-[https://people.cs.umass.edu/~yanlei/publications/sase-sigmod08.pdf](Efficient
-Pattern Matching over Event Streams). Instead of using a interpreter
+[Efficient Pattern Matching over Event Streams](https://people.cs.umass.edu/~yanlei/publications/sase-sigmod08.pdf). Instead of using an interpreter
 which handles the NFA state changes, the code is generated during
 compile time which theoretically speaking should be faster because we
 remove the entire interpreter.
