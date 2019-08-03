@@ -10,7 +10,7 @@ remove the entire interpreter.
 
 
 ```elixir
-defmodule Example
+defmodule Example do
   def is_alert(alert) do
     alert.event == "alert"
   end
